@@ -1,0 +1,20 @@
+{
+  "name": "empirefog1944",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Empire Fog 1944 - Turn-based 2D strategy prototype inspired by Empire Deluxe",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8"
+  }
+}

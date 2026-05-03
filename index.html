@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Empire Fog 1944</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-container"></div>
+      <div id="ui-overlay">
+        <header id="hud-top">
+          <div class="hud-left">
+            <span class="hud-label">Runde</span>
+            <span id="hud-turn" class="hud-value">1</span>
+          </div>
+          <div class="hud-center">
+            <span class="hud-label">Aktive Fraktion</span>
+            <span id="hud-faction" class="hud-value">—</span>
+          </div>
+          <div class="hud-right">
+            <button id="btn-end-turn" class="btn btn-primary" disabled>Zug beenden</button>
+          </div>
+        </header>
+
+        <aside id="panel-left" class="side-panel">
+          <h3 class="panel-title">Einheit</h3>
+          <div id="unit-details" class="panel-body">
+            <p class="panel-empty">Keine Einheit ausgewählt.</p>
+          </div>
+        </aside>
+
+        <aside id="panel-right" class="side-panel">
+          <h3 class="panel-title">Stadt</h3>
+          <div id="city-details" class="panel-body">
+            <p class="panel-empty">Keine Stadt ausgewählt.</p>
+          </div>
+        </aside>
+
+        <footer id="log-panel">
+          <h3 class="panel-title">Logbuch</h3>
+          <div id="log-content"></div>
+        </footer>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
