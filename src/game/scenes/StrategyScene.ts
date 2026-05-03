@@ -540,12 +540,12 @@ export class StrategyScene extends Phaser.Scene {
   private handleEndTurn(): void {
     if (this.state.phase !== 'player_turn') return;
     this.clearSelection();
-    this.turnManager.endTurn();
+    const nextPhase = this.turnManager.endTurn();
     this.updateHud();
     this.redrawAll();
 
     // After a small visual delay, run the AI turn.
-    if (this.state.phase === 'ai_turn') {
+    if (nextPhase === 'ai_turn') {
       this.time.delayedCall(350, () => this.runAiTurn());
     }
   }

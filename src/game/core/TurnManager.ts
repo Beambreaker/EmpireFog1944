@@ -1,5 +1,5 @@
 import type { GameState } from './GameState';
-import type { Faction } from './types';
+import type { Faction, Phase } from './types';
 import { refreshUnitForNewTurn } from '../units/Unit';
 import { tickProductionForFaction } from '../cities/ProductionSystem';
 
@@ -17,7 +17,7 @@ export class TurnManager {
    *   2. refresh movement points for that faction's units
    *   3. recompute fog of war for both factions
    */
-  endTurn(): void {
+  endTurn(): Phase {
     const next: Faction = this.state.activeFaction === 'allies' ? 'axis' : 'allies';
     this.state.activeFaction = next;
 
@@ -46,5 +46,6 @@ export class TurnManager {
     );
 
     this.state.phase = next === this.state.playerFaction ? 'player_turn' : 'ai_turn';
+    return this.state.phase;
   }
 }
