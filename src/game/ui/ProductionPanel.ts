@@ -1,6 +1,7 @@
 import type { City, UnitTypeId, Faction } from '../core/types';
 import { UNIT_TYPES } from '../units/UnitTypes';
 import { buildableUnits, effectiveProductionTurns } from '../cities/City';
+import { cityCanProduce } from '../cities/cityGeometry';
 import { FACTION_NAME } from '../core/constants';
 
 /**
@@ -34,6 +35,12 @@ export class ProductionPanel {
     const allowed = buildableUnits(city);
     const owned = city.faction === playerFaction;
     const factionLabel = FACTION_NAME[city.faction];
+    const kindLabel =
+      city.settlementKind === 'capital'
+        ? 'Hauptstadt (4 Felder)'
+        : city.settlementKind === 'town'
+          ? 'Stadt (2 Felder)'
+          : 'Dorf — keine Produktion';
     const traits = [
       city.hasFactory ? '<span style="color:var(--color-gold-bright)">Fabrik</span>' : '',
       city.hasPort ? '<span style="color:#7aa6d8">Hafen</span>' : '',
@@ -55,7 +62,7 @@ export class ProductionPanel {
     }
 
     let listHtml = '';
-    if (owned) {
+    if (owned && cityCanProduce(city)) {
       listHtml = '<div class="production-list">';
       for (const id of allowed) {
         const def = UNIT_TYPES[id];
@@ -68,13 +75,16 @@ export class ProductionPanel {
         `;
       }
       listHtml += '</div>';
+    } else if (owned && !cityCanProduce(city)) {
+      listHtml =
+        '<p class="panel-empty">Dörfer können keine Einheiten produzieren — nur Hauptstädte und Städte.</p>';
     } else {
       listHtml = `<p class="panel-empty">Stadt im Besitz: ${factionLabel}</p>`;
     }
 
     this.container.innerHTML = `
       <div class="city-name">${city.name}</div>
-      <div class="city-meta">${factionLabel.toUpperCase()}</div>
+      <div class="city-meta">${factionLabel.toUpperCase()} · ${kindLabel}</div>
       <div class="city-meta" style="margin-bottom:14px">${traits}</div>
       ${prodHtml}
       ${listHtml}

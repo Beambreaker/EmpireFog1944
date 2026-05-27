@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0-premium",
+  "project": "Empire Fog 1944",
+  "generatedAt": "2026-05-27T17:02:11.133Z",
+  "sizes": {
+    "terrain": 256,
+    "units": 96,
+    "cities": 256
+  }
+}

@@ -2,7 +2,8 @@
 
 ## Stack
 - TypeScript (strict), Vite, Phaser 3, DOM-Overlay für UI
-- Keine externen Bildassets — alle Grafiken prozedural via Phaser.Graphics
+- Spielfläche: prozedural via Phaser.Graphics (`src/game/rendering/TerrainRenderer.ts`, `UnitRenderer.ts`); zentrale Farben in `src/game/core/theme.ts`, DOM via `src/game/rendering/UITheme.ts`.
+- Stilreferenzen (nur Inspiration, keine Runtime-Bitmaps im Spiel): `src/assets/reference/*.png` — siehe `EmpireFog1944_AssetPack_for_Claude/README.md`.
 
 ## Inhaltsregeln (HART)
 - WW2-Setting, aber nur neutrale, abstrakte Fraktionssymbole.

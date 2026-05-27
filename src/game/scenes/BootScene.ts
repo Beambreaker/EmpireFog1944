@@ -1,17 +1,28 @@
 import Phaser from 'phaser';
+import { INTRO_VIDEO_KEY } from '../rendering/assetCatalog';
+import { preloadGameAssets } from '../rendering/loadGameAssets';
+import { shouldSkipIntro } from './IntroScene';
 
-/**
- * BootScene only exists so that we have a clean start hook.
- * No external assets are loaded — the game uses procedurally generated
- * graphics throughout. Once we're ready, we hand over to MenuScene.
- */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
   }
 
+  preload(): void {
+    this.load.on('loaderror', (file: { key?: string }) => {
+      if (file.key === INTRO_VIDEO_KEY) {
+        // Kein MP4 vorhanden — IntroScene spielt Kino-Fallback.
+      }
+    });
+    preloadGameAssets(this);
+  }
+
   create(): void {
-    // Hand over immediately.
-    this.scene.start('MenuScene');
+    if (shouldSkipIntro()) {
+      document.body.classList.add('in-menu');
+      this.scene.start('MenuScene');
+    } else {
+      this.scene.start('IntroScene');
+    }
   }
 }

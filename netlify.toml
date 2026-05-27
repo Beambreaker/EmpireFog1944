@@ -1,0 +1,9 @@
+# Alternative zu GitHub Pages (Root-URL, z. B. https://empirefog1944.netlify.app)
+[build]
+  command = "npm run assets:generate && npm run prepare:assets && npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

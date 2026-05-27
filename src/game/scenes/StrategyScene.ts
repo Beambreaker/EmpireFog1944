@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { City, Faction, Unit } from '../core/types';
 import { GameState } from '../core/GameState';
 import { TurnManager } from '../core/TurnManager';
+import { CAMERA, computeInitialWorldScale } from '../core/camera';
 import {
   FACTION_COLORS,
   FACTION_NAME,
@@ -9,8 +10,11 @@ import {
   MAP_WIDTH,
   TILE_SIZE,
 } from '../core/constants';
-import { TERRAIN_STYLES } from '../map/Terrain';
+import { theme } from '../core/theme';
 import { UNIT_TYPES } from '../units/UnitTypes';
+import { TEXTURE } from '../rendering/assetCatalog';
+import { rebuildTerrainSpriteLayer } from '../rendering/TerrainSpriteLayer';
+import { createUnitVisual } from '../rendering/UnitSpriteLayer';
 import { getReachableTiles, moveUnitTo } from '../units/MovementSystem';
 import { attack, canAttack } from '../units/CombatSystem';
 import { startProduction } from '../cities/ProductionSystem';
@@ -18,6 +22,10 @@ import { SimpleAI } from '../ai/SimpleAI';
 import { HUD } from '../ui/HUD';
 import { LogPanel } from '../ui/LogPanel';
 import { ProductionPanel } from '../ui/ProductionPanel';
+import { BriefingOverlay } from '../ui/BriefingOverlay';
+import { CampaignDirector } from '../narrative/CampaignDirector';
+import { MapEffectsLayer } from '../rendering/MapEffectsLayer';
+import { MissionBanner } from '../ui/MissionBanner';
 
 interface SceneData {
   playerFaction: Faction;
@@ -49,11 +57,21 @@ export class StrategyScene extends Phaser.Scene {
   private logPanel!: LogPanel;
   private prodPanel!: ProductionPanel;
 
-  private layerTerrain!: Phaser.GameObjects.Graphics;
+  private layerTerrain!: Phaser.GameObjects.Container;
+  private layerMapEffects!: Phaser.GameObjects.Container;
+  private mapEffects: MapEffectsLayer | null = null;
+  private screenVignette!: Phaser.GameObjects.Graphics;
+  private campaign!: CampaignDirector;
+  private briefing!: BriefingOverlay;
+  private missionBanner!: MissionBanner;
+  private briefingActive = false;
+  private layerAtmosphere!: Phaser.GameObjects.TileSprite;
   private layerOverlay!: Phaser.GameObjects.Graphics;
-  private layerHighlight!: Phaser.GameObjects.Graphics;
+  private layerHighlight!: Phaser.GameObjects.Container;
   private layerUnits!: Phaser.GameObjects.Container;
+  private layerFogPattern!: Phaser.GameObjects.TileSprite;
   private layerFog!: Phaser.GameObjects.Graphics;
+  private layerCityLabels!: Phaser.GameObjects.Container;
 
   private worldRoot!: Phaser.GameObjects.Container;
 
@@ -84,24 +102,55 @@ export class StrategyScene extends Phaser.Scene {
     // World root container — we move/scale this for camera pan & zoom.
     this.worldRoot = this.add.container(0, 0);
 
-    this.layerTerrain = this.add.graphics();
+    this.layerTerrain = this.add.container(0, 0);
+    this.layerMapEffects = this.add.container(0, 0);
+    this.layerAtmosphere = this.add.tileSprite(
+      (this.worldWidth * 0.5),
+      (this.worldHeight * 0.5),
+      this.worldWidth,
+      this.worldHeight,
+      'tex-map-grain',
+    );
+    this.layerAtmosphere.setAlpha(0.1);
+    this.layerAtmosphere.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.layerOverlay = this.add.graphics();
-    this.layerHighlight = this.add.graphics();
+    this.layerHighlight = this.add.container(0, 0);
     this.layerUnits = this.add.container(0, 0);
+    this.layerFogPattern = this.add.tileSprite(
+      this.worldWidth * 0.5,
+      this.worldHeight * 0.5,
+      this.worldWidth,
+      this.worldHeight,
+      'tex-fog-pattern',
+    );
+    this.layerFogPattern.setAlpha(0.12);
+    this.layerFogPattern.setBlendMode(Phaser.BlendModes.SCREEN);
     this.layerFog = this.add.graphics();
+    this.layerCityLabels = this.add.container(0, 0);
 
     this.worldRoot.add([
       this.layerTerrain,
+      this.layerMapEffects,
+      this.layerAtmosphere,
       this.layerOverlay,
+      this.layerCityLabels,
       this.layerHighlight,
       this.layerUnits,
+      this.layerFogPattern,
       this.layerFog,
     ]);
+
+    const initialScale = computeInitialWorldScale(this.scale.width, this.scale.height);
+    this.worldRoot.setScale(initialScale);
 
     // Centre the world initially.
     this.centreCamera();
 
     // UI ------------------------------------------------------------------
+    this.campaign = new CampaignDirector(this.state.playerFaction);
+    this.briefing = new BriefingOverlay();
+    this.missionBanner = new MissionBanner();
+
     this.hud = new HUD(() => this.handleEndTurn());
     this.logPanel = new LogPanel();
     this.prodPanel = new ProductionPanel((unitTypeId) => {
@@ -131,15 +180,76 @@ export class StrategyScene extends Phaser.Scene {
       ESC: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC),
     };
     this.input.on('wheel', (_p: unknown, _go: unknown, _dx: number, dy: number) => {
-      const dir = dy > 0 ? -0.1 : 0.1;
+      const dir = dy > 0 ? -CAMERA.zoomStep : CAMERA.zoomStep;
       this.zoomBy(dir);
     });
 
+    const zStep = CAMERA.zoomStep;
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_ADD).on('down', () =>
+      this.zoomBy(zStep),
+    );
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_SUBTRACT).on('down', () =>
+      this.zoomBy(-zStep),
+    );
+    this.input.keyboard!.addKey('PLUS').on('down', () => this.zoomBy(zStep));
+    this.input.keyboard!.addKey('MINUS').on('down', () => this.zoomBy(-zStep));
+
     this.scale.on('resize', (gs: Phaser.Structs.Size) => this.onResize(gs));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.onResize, this);
+    });
+
+    this.screenVignette = this.add.graphics();
+    this.screenVignette.setScrollFactor(0);
+    this.screenVignette.setDepth(1000);
+    this.drawScreenVignette();
 
     // Initial render ------------------------------------------------------
     this.redrawAll();
     this.updateHud();
+    this.refreshMissionBanner();
+    this.time.delayedCall(400, () => {
+      void this.maybeShowCampaignBriefing();
+    });
+  }
+
+  private refreshMissionBanner(): void {
+    const m = this.campaign.currentMission(this.state.turn);
+    this.missionBanner.show(m?.title ?? 'Operation Nebelfront', m?.objectives[0] ?? '');
+  }
+
+  private async maybeShowCampaignBriefing(): Promise<void> {
+    const mission = this.campaign.pendingBriefing(this.state.turn);
+    if (!mission) return;
+    this.briefingActive = true;
+    this.hud.setTurnInfo(
+      this.state.turn,
+      this.state.activeFaction,
+      false,
+    );
+    await this.briefing.show(mission);
+    this.campaign.markBriefingShown(mission.id);
+    this.state.pushLog('system', this.state.playerFaction, mission.logLine);
+    this.logPanel.push({
+      turn: this.state.turn,
+      faction: this.state.playerFaction,
+      kind: 'system',
+      message: mission.logLine,
+    });
+    this.briefingActive = false;
+    this.updateHud();
+    this.refreshMissionBanner();
+  }
+
+  private drawScreenVignette(): void {
+    const g = this.screenVignette;
+    const { width, height } = this.scale;
+    g.clear();
+    g.fillStyle(0x000000, 0.35);
+    g.fillRect(0, 0, width, height * 0.08);
+    g.fillRect(0, height * 0.92, width, height * 0.08);
+    g.fillRect(0, 0, width * 0.06, height);
+    g.fillRect(width * 0.94, 0, width * 0.06, height);
   }
 
   // ===========================================================================
@@ -161,22 +271,37 @@ export class StrategyScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.wasdKeys.ESC)) {
       this.clearSelection();
     }
+    this.layerAtmosphere.tilePositionX += delta * 0.0024;
+    this.layerAtmosphere.tilePositionY += delta * 0.0012;
+    this.layerFogPattern.tilePositionX -= delta * 0.0034;
+    this.layerFogPattern.tilePositionY += delta * 0.0016;
+    this.mapEffects?.update(_time, delta);
   }
 
   private zoomBy(delta: number): void {
-    const newScale = Phaser.Math.Clamp(this.worldRoot.scale + delta, 0.5, 2.0);
+    const newScale = Phaser.Math.Clamp(
+      this.worldRoot.scale + delta,
+      CAMERA.minScale,
+      CAMERA.maxScale,
+    );
     this.worldRoot.setScale(newScale);
   }
 
   private centreCamera(): void {
     const { width, height } = this.scale;
-    this.worldRoot.x = (width - this.worldWidth) / 2;
-    this.worldRoot.y = (height - this.worldHeight) / 2 + 28; // shifted slightly to clear the top HUD
+    const s = this.worldRoot.scale;
+    this.worldRoot.x = (width - this.worldWidth * s) / 2;
+    this.worldRoot.y = (height - this.worldHeight * s) / 2 + 28;
   }
 
-  private onResize(_gs: Phaser.Structs.Size): void {
-    // Don't re-centre on every resize — just keep the camera in place.
-    // Phaser's RESIZE scale mode handles canvas dimensions.
+  private onResize(gs: Phaser.Structs.Size): void {
+    this.drawScreenVignette();
+    if (this.state.phase === 'game_over') return;
+    const next = computeInitialWorldScale(gs.width, gs.height);
+    if (this.worldRoot.scale < next * 0.85) {
+      this.worldRoot.setScale(next);
+      this.centreCamera();
+    }
   }
 
   // ===========================================================================
@@ -185,51 +310,66 @@ export class StrategyScene extends Phaser.Scene {
   private redrawAll(): void {
     this.drawTerrain();
     this.drawOverlay();
+    this.drawCityLabels();
     this.drawHighlights();
     this.drawUnits();
     this.drawFog();
   }
 
   private drawTerrain(): void {
-    const g = this.layerTerrain;
-    g.clear();
-    for (let y = 0; y < this.state.tileMap.height; y++) {
-      for (let x = 0; x < this.state.tileMap.width; x++) {
-        const tile = this.state.tileMap.get(x, y)!;
-        const style = TERRAIN_STYLES[tile.terrain];
-        const px = x * TILE_SIZE;
-        const py = y * TILE_SIZE;
+    rebuildTerrainSpriteLayer(
+      this,
+      this.layerTerrain,
+      this.state.tileMap,
+      this.state.cities,
+      TILE_SIZE,
+    );
+    this.mapEffects?.destroy();
+    this.layerMapEffects.removeAll(true);
+    this.mapEffects = new MapEffectsLayer(
+      this,
+      this.layerMapEffects,
+      this.state.tileMap,
+      this.state.cities,
+      TILE_SIZE,
+    );
+  }
 
-        g.fillStyle(style.base, 1);
-        g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-
-        // Subtle terrain detail
-        if (tile.terrain === 'forest') {
-          g.fillStyle(style.accent, 0.55);
-          g.fillTriangle(
-            px + TILE_SIZE * 0.5, py + TILE_SIZE * 0.18,
-            px + TILE_SIZE * 0.18, py + TILE_SIZE * 0.78,
-            px + TILE_SIZE * 0.82, py + TILE_SIZE * 0.78,
-          );
-        } else if (tile.terrain === 'mountain') {
-          g.fillStyle(style.accent, 0.7);
-          g.fillTriangle(
-            px + TILE_SIZE * 0.5, py + TILE_SIZE * 0.15,
-            px + TILE_SIZE * 0.05, py + TILE_SIZE * 0.92,
-            px + TILE_SIZE * 0.95, py + TILE_SIZE * 0.92,
-          );
-          g.fillStyle(0xffffff, 0.25);
-          g.fillTriangle(
-            px + TILE_SIZE * 0.5, py + TILE_SIZE * 0.15,
-            px + TILE_SIZE * 0.38, py + TILE_SIZE * 0.42,
-            px + TILE_SIZE * 0.62, py + TILE_SIZE * 0.42,
-          );
-        } else if (tile.terrain === 'water') {
-          g.fillStyle(style.accent, 0.18);
-          g.fillRect(px + 2, py + TILE_SIZE * 0.55, TILE_SIZE - 4, 2);
-          g.fillRect(px + 6, py + TILE_SIZE * 0.75, TILE_SIZE - 12, 1);
+  private drawCityLabels(): void {
+    this.layerCityLabels.removeAll(true);
+    const pf = this.state.playerFaction;
+    for (const c of this.state.cities) {
+      let anyVis = false;
+      for (let yy = c.y; yy < c.y + c.tileHeight; yy++) {
+        for (let xx = c.x; xx < c.x + c.tileWidth; xx++) {
+          if (this.state.fog.get(pf, xx, yy) === 'visible') anyVis = true;
         }
       }
+      if (!anyVis) continue;
+
+      const tcx = c.x + c.tileWidth * 0.5;
+      const tcy = c.y + c.tileHeight * 0.5;
+      const px = tcx * TILE_SIZE;
+      const py = tcy * TILE_SIZE;
+
+      const tier =
+        c.settlementKind === 'capital' ? 'Hauptstadt' : c.settlementKind === 'town' ? 'Stadt' : 'Dorf';
+      const fs =
+        c.settlementKind === 'capital'
+          ? Math.round(TILE_SIZE * 0.34)
+          : c.settlementKind === 'town'
+            ? Math.round(TILE_SIZE * 0.3)
+            : Math.round(TILE_SIZE * 0.26);
+      const txt = this.add.text(px, py - TILE_SIZE * 0.42, `${c.name}\n${tier}`, {
+        fontFamily: 'Cinzel, Georgia, serif',
+        fontSize: `${fs}px`,
+        color: '#f5ecd8',
+        align: 'center',
+        stroke: '#1a1510',
+        strokeThickness: 4,
+      });
+      txt.setOrigin(0.5, 1);
+      this.layerCityLabels.add(txt);
     }
   }
 
@@ -237,8 +377,7 @@ export class StrategyScene extends Phaser.Scene {
     const g = this.layerOverlay;
     g.clear();
 
-    // Light grid lines.
-    g.lineStyle(1, 0x000000, 0.16);
+    g.lineStyle(1, theme.map.gridLine, theme.map.gridAlpha * 0.55);
     for (let x = 0; x <= this.state.tileMap.width; x++) {
       g.lineBetween(x * TILE_SIZE, 0, x * TILE_SIZE, this.state.tileMap.height * TILE_SIZE);
     }
@@ -246,100 +385,98 @@ export class StrategyScene extends Phaser.Scene {
       g.lineBetween(0, y * TILE_SIZE, this.state.tileMap.width * TILE_SIZE, y * TILE_SIZE);
     }
 
-    // City badges.
+    // Settlement outlines (multi-tile footprint).
     for (const c of this.state.cities) {
-      const px = c.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = c.y * TILE_SIZE + TILE_SIZE / 2;
-
-      // Faction-tinted ring.
       const colour = FACTION_COLORS[c.faction];
-      g.lineStyle(2, colour, 1);
-      g.strokeCircle(px, py, TILE_SIZE * 0.42);
+      const x0 = c.x * TILE_SIZE;
+      const y0 = c.y * TILE_SIZE;
+      const bw = c.tileWidth * TILE_SIZE;
+      const bh = c.tileHeight * TILE_SIZE;
+      g.lineStyle(c.settlementKind === 'capital' ? 3 : 2, colour, 0.95);
+      g.strokeRect(x0 + 1, y0 + 1, bw - 2, bh - 2);
+      g.fillStyle(0x000000, 0.2);
+      g.fillRect(x0 + 2, y0 + 2, bw - 4, bh - 4);
 
-      // Centre fill — slightly lighter than terrain.
-      g.fillStyle(0x000000, 0.35);
-      g.fillCircle(px, py, TILE_SIZE * 0.36);
-
-      // Tile-type indicator
-      g.fillStyle(0xc9a44a, 0.95);
-      const tile = this.state.tileMap.get(c.x, c.y)!;
-      if (tile.terrain === 'port') {
-        // Anchor-like icon — small triangle.
-        g.fillTriangle(
-          px, py - 4,
-          px - 5, py + 4,
-          px + 5, py + 4,
-        );
-      } else if (tile.terrain === 'airfield') {
-        // Plane-cross icon.
-        g.fillRect(px - 6, py - 1, 12, 2);
-        g.fillRect(px - 1, py - 5, 2, 10);
-      } else {
-        // Generic city pip.
-        g.fillRect(px - 3, py - 3, 6, 6);
+      g.fillStyle(theme.menu.gold, 0.88);
+      for (let ty = c.y; ty < c.y + c.tileHeight; ty++) {
+        for (let tx = c.x; tx < c.x + c.tileWidth; tx++) {
+          const tile = this.state.tileMap.get(tx, ty)!;
+          const cx = tx * TILE_SIZE + TILE_SIZE / 2;
+          const cy = ty * TILE_SIZE + TILE_SIZE / 2;
+          if (tile.terrain === 'port') {
+            g.fillTriangle(cx, cy - 3, cx - 4, cy + 4, cx + 4, cy + 4);
+          } else if (tile.terrain === 'airfield') {
+            g.fillRect(cx - 5, cy - 1, 10, 2);
+            g.fillRect(cx - 1, cy - 4, 2, 8);
+          }
+        }
       }
     }
   }
 
   private drawHighlights(): void {
-    const g = this.layerHighlight;
-    g.clear();
+    this.layerHighlight.removeAll(true);
+    const g = this.add.graphics();
 
     if (this.selectedUnit) {
       const u = this.selectedUnit;
-      // Selection ring around unit.
-      g.lineStyle(2, 0xc9a44a, 0.95);
-      g.strokeRect(u.x * TILE_SIZE + 1, u.y * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      g.lineStyle(3, theme.map.selection, 0.95);
+      g.strokeRoundedRect(
+        u.x * TILE_SIZE + 1,
+        u.y * TILE_SIZE + 1,
+        TILE_SIZE - 2,
+        TILE_SIZE - 2,
+        4,
+      );
     }
 
-    if (this.reachable) {
-      g.fillStyle(0xc9a44a, 0.18);
+    if (this.reachable && this.textures.exists(TEXTURE.uiMoveHighlight)) {
       for (const key of this.reachable.keys()) {
         const [xs, ys] = key.split(',');
         const x = parseInt(xs, 10);
         const y = parseInt(ys, 10);
         if (x === this.selectedUnit?.x && y === this.selectedUnit?.y) continue;
-        g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      }
-      // Outline reachable area.
-      g.lineStyle(1, 0xc9a44a, 0.4);
-      for (const key of this.reachable.keys()) {
-        const [xs, ys] = key.split(',');
-        const x = parseInt(xs, 10);
-        const y = parseInt(ys, 10);
-        g.strokeRect(x * TILE_SIZE + 0.5, y * TILE_SIZE + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+        const hx = x * TILE_SIZE + TILE_SIZE / 2;
+        const hy = y * TILE_SIZE + TILE_SIZE / 2;
+        const hl = this.add.image(hx, hy, TEXTURE.uiMoveHighlight);
+        hl.setDisplaySize(TILE_SIZE, TILE_SIZE);
+        hl.setAlpha(0.85);
+        hl.setBlendMode(Phaser.BlendModes.ADD);
+        this.layerHighlight.add(hl);
       }
     }
 
-    // Highlight attackable enemies.
     if (this.selectedUnit && !this.selectedUnit.hasAttacked) {
       const u = this.selectedUnit;
-      g.lineStyle(2, 0xd96565, 0.9);
+      g.lineStyle(2, theme.map.attackRange, 0.92);
       for (const enemy of this.state.units) {
         if (enemy.faction === u.faction) continue;
         if (enemy.hp <= 0) continue;
         if (this.state.fog.get(this.state.playerFaction, enemy.x, enemy.y) !== 'visible') continue;
         if (canAttack(this.state, u, enemy)) {
-          g.strokeRect(
+          g.strokeRoundedRect(
             enemy.x * TILE_SIZE + 1,
             enemy.y * TILE_SIZE + 1,
             TILE_SIZE - 2,
             TILE_SIZE - 2,
+            4,
           );
         }
       }
     }
 
-    // Highlight selected city.
     if (this.selectedCity) {
-      g.lineStyle(2, 0xc9a44a, 0.6);
+      const sc = this.selectedCity;
+      g.lineStyle(2, theme.map.selection, 0.78);
       g.strokeRect(
-        this.selectedCity.x * TILE_SIZE - 1,
-        this.selectedCity.y * TILE_SIZE - 1,
-        TILE_SIZE + 2,
-        TILE_SIZE + 2,
+        sc.x * TILE_SIZE - 2,
+        sc.y * TILE_SIZE - 2,
+        sc.tileWidth * TILE_SIZE + 4,
+        sc.tileHeight * TILE_SIZE + 4,
       );
     }
+
+    this.layerHighlight.add(g);
   }
 
   private drawUnits(): void {
@@ -354,60 +491,9 @@ export class StrategyScene extends Phaser.Scene {
       ) {
         continue;
       }
-      const def = UNIT_TYPES[u.typeId];
       const colour = FACTION_COLORS[u.faction];
-
-      const cx = u.x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = u.y * TILE_SIZE + TILE_SIZE / 2;
-
-      // Background pill.
-      const g = this.add.graphics();
-      g.fillStyle(0x000000, 0.45);
-      g.fillRoundedRect(
-        u.x * TILE_SIZE + 3,
-        u.y * TILE_SIZE + 3,
-        TILE_SIZE - 6,
-        TILE_SIZE - 6,
-        4,
-      );
-      g.lineStyle(2, colour, 1);
-      g.strokeRoundedRect(
-        u.x * TILE_SIZE + 3,
-        u.y * TILE_SIZE + 3,
-        TILE_SIZE - 6,
-        TILE_SIZE - 6,
-        4,
-      );
-      this.layerUnits.add(g);
-
-      // Glyph.
-      const txt = this.add.text(cx, cy - 1, def.symbol, {
-        fontFamily: 'Cinzel, Georgia, serif',
-        fontSize: '14px',
-        color: '#f4e6c0',
-      });
-      txt.setOrigin(0.5);
-      this.layerUnits.add(txt);
-
-      // HP bar at top of cell when damaged.
-      if (u.hp < def.hpMax) {
-        const hpPct = Math.max(0, u.hp / def.hpMax);
-        const barW = TILE_SIZE - 8;
-        const bar = this.add.graphics();
-        bar.fillStyle(0x000000, 0.65);
-        bar.fillRect(u.x * TILE_SIZE + 4, u.y * TILE_SIZE + 1, barW, 3);
-        bar.fillStyle(hpPct > 0.6 ? 0x4a9a5e : hpPct > 0.3 ? 0xc9a44a : 0xc14040, 1);
-        bar.fillRect(u.x * TILE_SIZE + 4, u.y * TILE_SIZE + 1, barW * hpPct, 3);
-        this.layerUnits.add(bar);
-      }
-
-      // Movement-spent indicator (dim slightly when out of moves).
-      if (u.faction === this.state.playerFaction && u.movementLeft <= 0 && u.hasAttacked) {
-        const dim = this.add.graphics();
-        dim.fillStyle(0x000000, 0.35);
-        dim.fillRect(u.x * TILE_SIZE, u.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        this.layerUnits.add(dim);
-      }
+      const visual = createUnitVisual(this, u, TILE_SIZE, colour);
+      this.layerUnits.add(visual.root);
     }
   }
 
@@ -422,11 +508,15 @@ export class StrategyScene extends Phaser.Scene {
         const px = x * TILE_SIZE;
         const py = y * TILE_SIZE;
         if (s === 'unknown') {
-          g.fillStyle(0x000000, 0.95);
+          g.fillStyle(theme.fog.unknown.color, theme.fog.unknown.alpha);
           g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          g.fillStyle(0xffffff, 0.04);
+          g.fillRect(px + 1, py + 1, TILE_SIZE - 2, 2);
         } else if (s === 'explored') {
-          g.fillStyle(0x000000, 0.55);
+          g.fillStyle(theme.fog.explored.color, theme.fog.explored.alpha);
           g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          g.fillStyle(0xffffff, 0.025);
+          g.fillRect(px + 2, py + 2, TILE_SIZE - 4, 1);
         }
       }
     }
@@ -436,6 +526,7 @@ export class StrategyScene extends Phaser.Scene {
   // Input handling
   // ===========================================================================
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.briefingActive) return;
     if (this.state.phase !== 'player_turn') return;
     // Convert screen -> world coordinates.
     const wx = (pointer.x - this.worldRoot.x) / this.worldRoot.scale;
@@ -538,6 +629,7 @@ export class StrategyScene extends Phaser.Scene {
   // Turn handling
   // ===========================================================================
   private handleEndTurn(): void {
+    if (this.briefingActive) return;
     if (this.state.phase !== 'player_turn') return;
     this.clearSelection();
     const nextPhase = this.turnManager.endTurn();
@@ -563,6 +655,10 @@ export class StrategyScene extends Phaser.Scene {
     this.turnManager.endTurn();
     this.updateHud();
     this.redrawAll();
+    this.refreshMissionBanner();
+    const hint = this.campaign.evaluateMissionProgress(this.state);
+    if (hint) this.state.pushLog('system', this.state.playerFaction, hint);
+    void this.maybeShowCampaignBriefing();
   }
 
   private updateHud(): void {
@@ -612,7 +708,8 @@ export class StrategyScene extends Phaser.Scene {
       Phaser.Geom.Rectangle.Contains,
     );
     overlay.on('pointerdown', () => {
-      this.scene.start('MenuScene');
+      document.body.classList.add('in-menu');
+      this.scene.start('BootScene');
     });
   }
 }

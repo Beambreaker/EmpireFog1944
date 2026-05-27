@@ -1,0 +1,107 @@
+Du arbeitest im Projekt EmpireFog1944.
+
+Ich habe dir ein ZIP-Paket mit grafischen Referenzen gegeben. Entpacke oder nutze den Ordner als Referenzmaterial.
+
+WICHTIG:
+Diese Bilder sind Stilreferenzen, keine final geschnittenen Spritesheets. Verwende sie, um Look, Farben, UI-Aufbau und visuelle Richtung des Spiels umzusetzen.
+
+REFERENZDATEIEN:
+- assets/terrain_and_structures_reference.png
+- assets/units_and_corps_symbols_reference.png
+- assets/main_menu_faction_selection_reference.png
+
+DEINE AUFGABE:
+
+1. Lies die vorhandene Projektstruktur von EmpireFog1944.
+2. Erstelle oder erweitere einen Ordner:
+   src/assets/
+   src/assets/reference/
+   src/assets/generated/
+3. Kopiere die drei Referenzbilder in:
+   src/assets/reference/
+4. Passe das Startmenü so an, dass es sich optisch an `main_menu_faction_selection_reference.png` orientiert:
+   - dunkles Marineblau / Stahlgrau
+   - Goldrahmen
+   - großer Titel "EMPIRE FOG 1944"
+   - zwei Fraktionskarten:
+     - ALLIIERTE
+     - ACHSENMÄCHTE
+   - Buttons:
+     - SPIEL STARTEN
+     - OPTIONEN
+     - BEENDEN
+   - Hintergrund mit strategischer Kartenoptik / Fog-of-War-Stimmung
+   - keine verbotenen Symbole
+
+5. Passe die Map-Darstellung so an, dass die Terrainarten stilistisch zur Referenz passen:
+   - Deep Ocean: dunkles Blau mit Wellenstruktur
+   - Shallow Sea: Türkis/Blaugrün
+   - Coastline: Land-Wasser-Übergang mit heller Kante
+   - Plains: olivgrüne Grasfläche
+   - Forest: dunklere grüne Baumstruktur
+   - Mountain: graubraune Bergstruktur mit hellen Spitzen
+   - Road: helle Straße über Land
+   - City: kleine Gebäudegruppe
+   - Fortified City: Stadt mit Mauerrahmen
+   - Harbor: Stadt plus Wasser/Dock-Element
+   - Airfield: graue Landebahn / Hangar
+   - Radar: Kreis-/Radar-Icon
+   - Factory: dunkle Industrieform mit Schornstein
+
+6. Passe die Einheiten-Icons an die Referenz `units_and_corps_symbols_reference.png` an.
+   Für Version 0.1 reicht einfache Canvas-/Phaser-Grafik:
+   - Infanterie: kleines grünes Soldatensymbol oder taktisches X-Symbol
+   - Spezialkräfte: gekreuzte Klingen oder markantes Elite-Symbol
+   - Panzer: kleiner Panzerkörper mit Turm
+   - Flak/Radar: Radar-/Schüssel-Symbol
+   - Jäger: Flugzeugsilhouette
+   - Dive Bomber: Flugzeugsilhouette mit Bombermarkierung
+   - Transport Plane: größere Flugzeugsilhouette
+   - Destroyer: Schiffssilhouette
+   - Submarine: längliches Unterseebootsymbol
+   - Aircraft Carrier: flaches Trägerschiffsymbol
+   - Battleship: größeres Schiffssymbol mit Aufbau
+
+7. Erstelle zentrale Design-Konstanten, zum Beispiel:
+   src/game/core/theme.ts
+
+   Dort definierst du:
+   - Farben
+   - UI-Rahmen
+   - Fraktionsfarben
+   - Terrainfarben
+   - Fog-of-War-Farben
+   - Schriftgrößen
+   - Button-Stile
+
+8. Falls möglich, erzeuge keine echten Bild-Sprites, sondern zeichne zunächst mit Phaser Graphics:
+   - Das hält den Prototyp leichtgewichtig.
+   - Die Referenzbilder bleiben nur Inspirationsmaterial.
+   - Später können daraus echte Sprites geschnitten werden.
+
+9. Achte auf Lesbarkeit:
+   - Die Einheiten müssen auf der Karte sofort erkennbar sein.
+   - Städte müssen deutlich schöner und wichtiger wirken als einfache Felder.
+   - Fog of War muss klar unterscheidbar sein:
+     - unbekannt = fast schwarz
+     - erkundet = gedimmt
+     - sichtbar = normal
+
+10. Wichtig:
+    - Keine Hakenkreuze
+    - Keine SS-Runen
+    - Keine NS-Parolen
+    - Keine NS-Propaganda
+    - Keine reale Glorifizierung
+    - Historisch inspirierter, neutraler Strategiespiel-Stil.
+
+11. Nach der Umsetzung:
+    - npm run build ausführen
+    - Fehler eigenständig beheben
+    - kurze Zusammenfassung schreiben:
+      - Welche Dateien geändert wurden
+      - Was grafisch verbessert wurde
+      - Wie ich das Spiel starte
+      - Welche visuellen Punkte als nächstes verbessert werden sollten
+
+BEGINNE JETZT.

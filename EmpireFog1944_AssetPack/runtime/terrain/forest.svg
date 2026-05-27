@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs><linearGradient id="tg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3a5234"/><stop offset="100%" stop-color="#243020"/></linearGradient><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="t"/>
+  <feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" in2="t" mode="multiply" opacity="0.08"/></filter></defs>
+  <rect width="256" height="256" fill="url(#tg)"/>
+  <rect fill="#3d5c34" width="256" height="256"/>
+     <polygon points="48,200 32,170 64,170" fill="#2a4024"/><polygon points="96,210 78,175 114,175" fill="#324a2c"/>
+     <polygon points="150,195 130,160 170,160" fill="#2a4024"/><polygon points="200,205 182,168 218,168" fill="#3a5234"/>
+     <polygon points="70,140 54,108 86,108" fill="#3d5530" opacity="0.9"/>
+  <rect width="256" height="256" fill="" opacity="0.35" style="mix-blend-mode:overlay"/>
+  </svg>

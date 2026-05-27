@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs><linearGradient id="tg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7a7568"/><stop offset="100%" stop-color="#5a5548"/></linearGradient><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="t"/>
+  <feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" in2="t" mode="multiply" opacity="0.08"/></filter></defs>
+  <rect width="256" height="256" fill="url(#tg)"/>
+  <rect fill="#6a6558" width="256" height="256"/>
+     <rect x="32" y="108" width="192" height="40" fill="#8a8478" rx="4"/>
+     <rect x="108" y="32" width="40" height="192" fill="#8a8478" rx="4"/>
+     <line x1="48" y1="128" x2="208" y2="128" stroke="#c9a44a" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="12 8"/>
+     <line x1="128" y1="48" x2="128" y2="208" stroke="#c9a44a" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="12 8"/>
+  <rect width="256" height="256" fill="" opacity="0.35" style="mix-blend-mode:overlay"/>
+  </svg>

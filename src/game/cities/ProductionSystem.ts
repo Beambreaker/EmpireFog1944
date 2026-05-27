@@ -3,6 +3,7 @@ import type { GameState } from '../core/GameState';
 import { UNIT_TYPES } from '../units/UnitTypes';
 import { createUnit } from '../units/UnitFactory';
 import { buildableUnits, effectiveProductionTurns } from './City';
+import { cityFootprint } from './cityGeometry';
 import {
   AIR_MOVEMENT_COST,
   LAND_MOVEMENT_COST,
@@ -82,12 +83,21 @@ export function findSpawnTile(
     }
   };
 
+  const seen = new Set<string>();
   const candidates: Coord[] = [];
-  for (let r = 0; r <= 3; r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        candidates.push({ x: city.x + dx, y: city.y + dy });
+  const roots = cityFootprint(city);
+  for (let r = 0; r <= 4; r++) {
+    for (const root of roots) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const cx = root.x + dx;
+          const cy = root.y + dy;
+          const key = `${cx},${cy}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          candidates.push({ x: cx, y: cy });
+        }
       }
     }
   }

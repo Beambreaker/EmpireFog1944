@@ -11,6 +11,9 @@ import { FogOfWar } from '../map/FogOfWar';
 import { generateMap } from '../map/MapGenerator';
 import { createUnit } from '../units/UnitFactory';
 import { DEFAULT_SEED } from './constants';
+import { FACTION_NAME } from './constants';
+import { cityContains, cityFootprint } from '../cities/cityGeometry';
+import { openingLogLines } from '../narrative/campaign';
 
 /**
  * Authoritative game state — single source of truth for the strategy scene.
@@ -49,18 +52,21 @@ export class GameState {
     this.cities = generated.cities;
     this.fog = new FogOfWar(this.tileMap.width, this.tileMap.height);
 
-    // Spawn a starter garrison in each starting city.
+    // Spawn a starter garrison in each starting settlement (first footprint tile).
     for (const c of this.cities) {
       if (c.faction === 'neutral') continue;
-      // Each starting city gets one infantry unit on its tile.
-      this.units.push(createUnit('infantry', c.faction, c.x, c.y));
+      const tiles = cityFootprint(c);
+      const spawn = tiles[0] ?? { x: c.x, y: c.y };
+      this.units.push(createUnit('infantry', c.faction, spawn.x, spawn.y));
     }
 
     // Initial fog computation.
     this.fog.recompute(this.playerFaction, this.units, this.cities, this.tileMap);
     this.fog.recompute(this.aiFaction, this.units, this.cities, this.tileMap);
 
-    this.pushLog('system', this.playerFaction, `Spielstart — Spieler kontrolliert ${playerFaction === 'allies' ? 'die Alliierten' : 'die Achsenmächte'}.`);
+    for (const line of openingLogLines(FACTION_NAME[playerFaction])) {
+      this.pushLog('system', this.playerFaction, line);
+    }
   }
 
   // ---------------------------- log helpers ------------------------------
@@ -77,7 +83,7 @@ export class GameState {
   }
 
   cityAt(x: number, y: number): City | undefined {
-    return this.cities.find((c) => c.x === x && c.y === y);
+    return this.cities.find((c) => cityContains(c, x, y));
   }
 
   unitsOf(faction: Faction): Unit[] {

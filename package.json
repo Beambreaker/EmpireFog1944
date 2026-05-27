@@ -6,9 +6,18 @@
   "description": "Empire Fog 1944 - Turn-based 2D strategy prototype inspired by Empire Deluxe",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run assets:generate && npm run prepare:assets",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "npm run assets:generate && npm run prepare:assets && tsc --noEmit && vite build --mode pages",
+    "build:release": "npm run build:pages",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "preview:pages": "vite preview --mode pages",
+    "preview:release": "npm run build:pages && vite preview --mode pages",
+    "typecheck": "tsc --noEmit",
+    "assets:generate": "node scripts/generate-premium-assets.mjs",
+    "prepare:assets": "node scripts/prepare-public-assets.mjs",
+    "predev": "npm run assets:generate && npm run prepare:assets",
+    "video:intro": "node scripts/build-intro-video.mjs"
   },
   "dependencies": {
     "phaser": "^3.80.1"

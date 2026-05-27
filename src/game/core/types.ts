@@ -10,9 +10,15 @@ export type TerrainType =
   | 'plain'
   | 'forest'
   | 'mountain'
+  | 'desert'
+  | 'marsh'
+  | 'road'
   | 'city'
   | 'port'
   | 'airfield';
+
+/** Multi-tile settlements: capital 2×2, town 2×1, village 1×1 — only capital/town may produce. */
+export type SettlementKind = 'capital' | 'town' | 'village';
 
 export type UnitTypeId =
   | 'infantry'
@@ -73,8 +79,13 @@ export interface Unit {
 export interface City {
   id: string;
   name: string;
+  /** Top-left tile of the settlement footprint. */
   x: number;
   y: number;
+  /** Footprint width/height in tiles (capital 2×2, town 2×1, village 1×1). */
+  tileWidth: number;
+  tileHeight: number;
+  settlementKind: SettlementKind;
   faction: Faction;
   hasPort: boolean;
   hasAirfield: boolean;

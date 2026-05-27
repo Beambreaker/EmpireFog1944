@@ -5,6 +5,7 @@ import { getReachableTiles, moveUnitTo } from '../units/MovementSystem';
 import { attack, canAttack } from '../units/CombatSystem';
 import { startProduction } from '../cities/ProductionSystem';
 import { buildableUnits } from '../cities/City';
+import { cityAnchorCentreCell } from '../cities/cityGeometry';
 import { manhattanDistance } from '../utils/GridMath';
 
 /**
@@ -139,13 +140,17 @@ export class SimpleAI {
     let bestCityDist = Infinity;
     for (const c of this.state.cities) {
       if (c.faction === faction) continue;
-      const d = manhattanDistance(unit, c);
+      const cell = cityAnchorCentreCell(c);
+      const d = manhattanDistance(unit, cell);
       if (d < bestCityDist) {
         bestCityDist = d;
         bestCity = c;
       }
     }
-    if (bestCity) return { x: bestCity.x, y: bestCity.y };
+    if (bestCity) {
+      const cell = cityAnchorCentreCell(bestCity);
+      return { x: cell.x, y: cell.y };
+    }
     return null;
   }
 }

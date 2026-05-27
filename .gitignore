@@ -1,5 +1,7 @@
 node_modules/
 dist/
+public/assets/
+public/assets/
 .vite/
 .DS_Store
 *.log
@@ -8,3 +10,7 @@ dist/
 .idea/
 .vscode/
 *.tsbuildinfo
+
+# Generated art exports (see src/assets/reference for style refs)
+src/assets/generated/*
+!src/assets/generated/.gitkeep

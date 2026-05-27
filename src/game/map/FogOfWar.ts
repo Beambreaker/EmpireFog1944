@@ -1,4 +1,5 @@
-import type { FogState, Faction, Unit } from '../core/types';
+import type { City, FogState, Faction, Unit } from '../core/types';
+import { cityFootprint } from '../cities/cityGeometry';
 import { UNIT_TYPES } from '../units/UnitTypes';
 import { chebyshevDistance } from '../utils/GridMath';
 import type { TileMap } from './TileMap';
@@ -43,7 +44,7 @@ export class FogOfWar {
   recompute(
     faction: Faction,
     units: Unit[],
-    cities: { x: number; y: number; faction: Faction }[],
+    cities: City[],
     _tileMap: TileMap,
   ): void {
     const arr = this.states.get(faction)!;
@@ -69,10 +70,13 @@ export class FogOfWar {
       const sight = UNIT_TYPES[u.typeId].sight;
       reveal(u.x, u.y, sight);
     }
-    // Reveal a small radius around friendly cities.
+    // Reveal around friendly settlements (radius scales slightly with footprint).
     for (const c of cities) {
       if (c.faction !== faction) continue;
-      reveal(c.x, c.y, 2);
+      const r = c.settlementKind === 'capital' ? 3 : c.settlementKind === 'town' ? 2 : 1;
+      for (const t of cityFootprint(c)) {
+        reveal(t.x, t.y, r);
+      }
     }
   }
 

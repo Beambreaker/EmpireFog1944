@@ -1,14 +1,17 @@
 import type { City, UnitTypeId } from '../core/types';
 import { UNIT_TYPES } from '../units/UnitTypes';
 import { FACTORY_PRODUCTION_BONUS } from '../core/constants';
+import { cityCanProduce } from './cityGeometry';
 
 /**
  * Returns which unit types this city is allowed to build.
- * - Land units: any city
- * - Air units : requires hasAirfield (or terrain == airfield)
- * - Sea units : requires hasPort     (or terrain == port)
+ * - Villages: no production.
+ * - Land units: capitals & towns
+ * - Air units : requires hasAirfield
+ * - Sea units : requires hasPort
  */
 export function buildableUnits(city: City): UnitTypeId[] {
+  if (!cityCanProduce(city)) return [];
   const result: UnitTypeId[] = [];
   for (const def of Object.values(UNIT_TYPES)) {
     if (def.domain === 'land') {

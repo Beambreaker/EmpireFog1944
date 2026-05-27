@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+    <circle cx="200" cy="200" r="170" fill="#0e1e32" stroke="#c9a44a" stroke-width="6"/>
+    <circle cx="200" cy="200" r="140" fill="none" stroke="#f0e0b0" stroke-width="2" opacity="0.5"/>
+    <text x="200" y="215" text-anchor="middle" font-family="Georgia,serif" font-size="42" font-weight="bold" fill="#f0e0b0">EF</text>
+    <text x="200" y="255" text-anchor="middle" font-family="Georgia,serif" font-size="14" letter-spacing="8" fill="#f5ecd8" opacity="0.8">1944</text>
+  </svg>

@@ -1,7 +1,9 @@
 import './styles.css';
 import Phaser from 'phaser';
+import { applyUiThemeToDocument } from './game/rendering/UITheme';
 import { GAME_CONFIG } from './game/GameConfig';
 import { BootScene } from './game/scenes/BootScene';
+import { IntroScene } from './game/scenes/IntroScene';
 import { MenuScene } from './game/scenes/MenuScene';
 import { StrategyScene } from './game/scenes/StrategyScene';
 
@@ -20,8 +22,10 @@ const config: Phaser.Types.Core.GameConfig = {
     pixelArt: false,
     antialias: true,
   },
-  scene: [BootScene, MenuScene, StrategyScene],
+  scene: [BootScene, IntroScene, MenuScene, StrategyScene],
 };
+
+applyUiThemeToDocument();
 
 // Tag the body in menu state so the HUD overlay is hidden until the strategy scene starts.
 document.body.classList.add('in-menu');

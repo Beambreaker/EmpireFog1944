@@ -17,6 +17,14 @@ historisch inspiriert vom Zweiten Weltkrieg, aber bewusst neutral dargestellt.
 - Keine externen Bildassets - alle Grafiken werden zur Laufzeit prozedural
   durch Phaser.Graphics und SVG/CSS erzeugt.
 
+## Online spielen (Link)
+
+Nach Aktivierung von GitHub Pages:
+
+**https://beambreaker.github.io/EmpireFog1944/**
+
+Einrichtung: siehe [DEPLOY.md](DEPLOY.md) (nur Einstellungen in diesem GitHub-Repo).
+
 ## Installation
 
 Voraussetzung: Node.js 18+ und npm.
@@ -33,12 +41,14 @@ npm run dev
 
 Der Vite-Dev-Server oeffnet automatisch http://localhost:5173.
 
-## Build (Produktion)
+## Build (Produktion / GitHub Pages)
 
 ```bash
-npm run build
-npm run preview
+npm run build:pages
+npm run preview:pages
 ```
+
+Lokaler Vorschau-Link entspricht der Online-Version unter `/EmpireFog1944/`.
 
 `npm run typecheck` prueft nur die Typen, ohne zu builden.
 
