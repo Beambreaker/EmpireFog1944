@@ -29,9 +29,9 @@ export function createUnitVisual(
   const shadow = scene.add.ellipse(0, tileSize * 0.22, tileSize * 0.72, tileSize * 0.2, 0x000000, 0.35);
   root.add(shadow);
 
-  const pad = tileSize * 0.06;
-  const frame = scene.add.rectangle(0, 0, tileSize - pad, tileSize - pad, theme.unit.tokenInner, 0.94);
-  frame.setStrokeStyle(2, factionColor, 1);
+  const pad = tileSize * 0.04;
+  const frame = scene.add.rectangle(0, 0, tileSize - pad, tileSize - pad, theme.unit.tokenInner, 0.96);
+  frame.setStrokeStyle(3, factionColor, 1);
   root.add(frame);
 
   const band = scene.add.rectangle(
@@ -45,7 +45,7 @@ export function createUnitVisual(
   root.add(band);
 
   const key = unitTextureKey(u.typeId);
-  const iconSize = tileSize * 0.78;
+  const iconSize = tileSize * 0.92;
   if (scene.textures.exists(key)) {
     const icon = scene.add.image(0, -tileSize * 0.02, key);
     icon.setDisplaySize(iconSize, iconSize);

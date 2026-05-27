@@ -1,0 +1,10 @@
+{
+  "canvas": 512,
+  "view": "side",
+  "style": "hammer-flat",
+  "rules": "neutral-ww2-no-forbidden-symbols",
+  "unit": "artillery",
+  "frames": 5,
+  "fps": 6,
+  "output": "runtime/trailer-units/artillery/frame-{n}.svg"
+}

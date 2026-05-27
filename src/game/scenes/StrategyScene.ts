@@ -19,12 +19,14 @@ import { getReachableTiles, moveUnitTo } from '../units/MovementSystem';
 import { attack, canAttack } from '../units/CombatSystem';
 import { startProduction } from '../cities/ProductionSystem';
 import { SimpleAI } from '../ai/SimpleAI';
+import { cityFootprint } from '../cities/cityGeometry';
 import { HUD } from '../ui/HUD';
 import { LogPanel } from '../ui/LogPanel';
 import { ProductionPanel } from '../ui/ProductionPanel';
 import { BriefingOverlay } from '../ui/BriefingOverlay';
 import { CampaignDirector } from '../narrative/CampaignDirector';
 import { MapEffectsLayer } from '../rendering/MapEffectsLayer';
+import { rebuildCityMarkers } from '../rendering/CityMarkersLayer';
 import { MissionBanner } from '../ui/MissionBanner';
 
 interface SceneData {
@@ -111,7 +113,7 @@ export class StrategyScene extends Phaser.Scene {
       this.worldHeight,
       'tex-map-grain',
     );
-    this.layerAtmosphere.setAlpha(0.1);
+    this.layerAtmosphere.setAlpha(0.16);
     this.layerAtmosphere.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.layerOverlay = this.add.graphics();
     this.layerHighlight = this.add.container(0, 0);
@@ -123,7 +125,7 @@ export class StrategyScene extends Phaser.Scene {
       this.worldHeight,
       'tex-fog-pattern',
     );
-    this.layerFogPattern.setAlpha(0.12);
+    this.layerFogPattern.setAlpha(0.08);
     this.layerFogPattern.setBlendMode(Phaser.BlendModes.SCREEN);
     this.layerFog = this.add.graphics();
     this.layerCityLabels = this.add.container(0, 0);
@@ -143,8 +145,7 @@ export class StrategyScene extends Phaser.Scene {
     const initialScale = computeInitialWorldScale(this.scale.width, this.scale.height);
     this.worldRoot.setScale(initialScale);
 
-    // Centre the world initially.
-    this.centreCamera();
+    this.centreOnPlayerTerritory();
 
     // UI ------------------------------------------------------------------
     this.campaign = new CampaignDirector(this.state.playerFaction);
@@ -179,20 +180,30 @@ export class StrategyScene extends Phaser.Scene {
       D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
       ESC: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC),
     };
-    this.input.on('wheel', (_p: unknown, _go: unknown, _dx: number, dy: number) => {
-      const dir = dy > 0 ? -CAMERA.zoomStep : CAMERA.zoomStep;
-      this.zoomBy(dir);
+    this.input.on('wheel', (pointer: Phaser.Input.Pointer, _go: unknown, _dx: number, dy: number) => {
+      if (this.briefingActive) return;
+      const factor = dy < 0 ? CAMERA.zoomWheelFactor : 1 / CAMERA.zoomWheelFactor;
+      this.zoomAtScreen(pointer.x, pointer.y, factor);
     });
 
-    const zStep = CAMERA.zoomStep;
-    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_ADD).on('down', () =>
-      this.zoomBy(zStep),
-    );
-    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_SUBTRACT).on('down', () =>
-      this.zoomBy(-zStep),
-    );
-    this.input.keyboard!.addKey('PLUS').on('down', () => this.zoomBy(zStep));
-    this.input.keyboard!.addKey('MINUS').on('down', () => this.zoomBy(-zStep));
+    const zIn = CAMERA.zoomWheelFactor;
+    const zOut = 1 / CAMERA.zoomWheelFactor;
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_ADD).on('down', () => {
+      const { width, height } = this.scale;
+      this.zoomAtScreen(width / 2, height / 2, zIn);
+    });
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_SUBTRACT).on('down', () => {
+      const { width, height } = this.scale;
+      this.zoomAtScreen(width / 2, height / 2, zOut);
+    });
+    this.input.keyboard!.addKey('PLUS').on('down', () => {
+      const { width, height } = this.scale;
+      this.zoomAtScreen(width / 2, height / 2, zIn);
+    });
+    this.input.keyboard!.addKey('MINUS').on('down', () => {
+      const { width, height } = this.scale;
+      this.zoomAtScreen(width / 2, height / 2, zOut);
+    });
 
     this.scale.on('resize', (gs: Phaser.Structs.Size) => this.onResize(gs));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -278,13 +289,17 @@ export class StrategyScene extends Phaser.Scene {
     this.mapEffects?.update(_time, delta);
   }
 
-  private zoomBy(delta: number): void {
-    const newScale = Phaser.Math.Clamp(
-      this.worldRoot.scale + delta,
-      CAMERA.minScale,
-      CAMERA.maxScale,
-    );
+  /** Zoom bleibt unter dem Mauszeiger (oder Bildschirmmitte bei Tastatur). */
+  private zoomAtScreen(screenX: number, screenY: number, scaleFactor: number): void {
+    const oldScale = this.worldRoot.scale;
+    const newScale = Phaser.Math.Clamp(oldScale * scaleFactor, CAMERA.minScale, CAMERA.maxScale);
+    if (Math.abs(newScale - oldScale) < 0.0005) return;
+
+    const worldX = (screenX - this.worldRoot.x) / oldScale;
+    const worldY = (screenY - this.worldRoot.y) / oldScale;
     this.worldRoot.setScale(newScale);
+    this.worldRoot.x = screenX - worldX * newScale;
+    this.worldRoot.y = screenY - worldY * newScale;
   }
 
   private centreCamera(): void {
@@ -292,6 +307,49 @@ export class StrategyScene extends Phaser.Scene {
     const s = this.worldRoot.scale;
     this.worldRoot.x = (width - this.worldWidth * s) / 2;
     this.worldRoot.y = (height - this.worldHeight * s) / 2 + 28;
+  }
+
+  /** Startansicht auf eigene Städte/Einheiten, nicht auf die leere Gesamtkarte. */
+  private centreOnPlayerTerritory(): void {
+    const pf = this.state.playerFaction;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    const include = (gx: number, gy: number): void => {
+      minX = Math.min(minX, gx);
+      minY = Math.min(minY, gy);
+      maxX = Math.max(maxX, gx);
+      maxY = Math.max(maxY, gy);
+    };
+
+    for (const c of this.state.citiesOf(pf)) {
+      for (const p of cityFootprint(c)) {
+        include(p.x, p.y);
+      }
+    }
+    for (const u of this.state.unitsOf(pf)) {
+      include(u.x, u.y);
+    }
+
+    if (!Number.isFinite(minX)) {
+      this.centreCamera();
+      return;
+    }
+
+    const pad = 3;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(this.state.tileMap.width - 1, maxX + pad);
+    maxY = Math.min(this.state.tileMap.height - 1, maxY + pad);
+
+    const cx = ((minX + maxX + 1) * 0.5) * TILE_SIZE;
+    const cy = ((minY + maxY + 1) * 0.5) * TILE_SIZE;
+    const { width, height } = this.scale;
+    const s = this.worldRoot.scale;
+    this.worldRoot.x = width * 0.5 - cx * s;
+    this.worldRoot.y = height * 0.52 - cy * s;
   }
 
   private onResize(gs: Phaser.Structs.Size): void {
@@ -336,48 +394,22 @@ export class StrategyScene extends Phaser.Scene {
   }
 
   private drawCityLabels(): void {
-    this.layerCityLabels.removeAll(true);
     const pf = this.state.playerFaction;
-    for (const c of this.state.cities) {
-      let anyVis = false;
-      for (let yy = c.y; yy < c.y + c.tileHeight; yy++) {
-        for (let xx = c.x; xx < c.x + c.tileWidth; xx++) {
-          if (this.state.fog.get(pf, xx, yy) === 'visible') anyVis = true;
-        }
-      }
-      if (!anyVis) continue;
-
-      const tcx = c.x + c.tileWidth * 0.5;
-      const tcy = c.y + c.tileHeight * 0.5;
-      const px = tcx * TILE_SIZE;
-      const py = tcy * TILE_SIZE;
-
-      const tier =
-        c.settlementKind === 'capital' ? 'Hauptstadt' : c.settlementKind === 'town' ? 'Stadt' : 'Dorf';
-      const fs =
-        c.settlementKind === 'capital'
-          ? Math.round(TILE_SIZE * 0.34)
-          : c.settlementKind === 'town'
-            ? Math.round(TILE_SIZE * 0.3)
-            : Math.round(TILE_SIZE * 0.26);
-      const txt = this.add.text(px, py - TILE_SIZE * 0.42, `${c.name}\n${tier}`, {
-        fontFamily: 'Cinzel, Georgia, serif',
-        fontSize: `${fs}px`,
-        color: '#f5ecd8',
-        align: 'center',
-        stroke: '#1a1510',
-        strokeThickness: 4,
-      });
-      txt.setOrigin(0.5, 1);
-      this.layerCityLabels.add(txt);
-    }
+    rebuildCityMarkers(
+      this,
+      this.layerCityLabels,
+      this.state.cities,
+      pf,
+      (gx, gy) => this.state.fog.get(pf, gx, gy) === 'visible',
+      TILE_SIZE,
+    );
   }
 
   private drawOverlay(): void {
     const g = this.layerOverlay;
     g.clear();
 
-    g.lineStyle(1, theme.map.gridLine, theme.map.gridAlpha * 0.55);
+    g.lineStyle(1, theme.map.gridLine, theme.map.gridAlpha);
     for (let x = 0; x <= this.state.tileMap.width; x++) {
       g.lineBetween(x * TILE_SIZE, 0, x * TILE_SIZE, this.state.tileMap.height * TILE_SIZE);
     }
@@ -392,9 +424,9 @@ export class StrategyScene extends Phaser.Scene {
       const y0 = c.y * TILE_SIZE;
       const bw = c.tileWidth * TILE_SIZE;
       const bh = c.tileHeight * TILE_SIZE;
-      g.lineStyle(c.settlementKind === 'capital' ? 3 : 2, colour, 0.95);
+      g.lineStyle(c.settlementKind === 'capital' ? 2 : 1, colour, 0.55);
       g.strokeRect(x0 + 1, y0 + 1, bw - 2, bh - 2);
-      g.fillStyle(0x000000, 0.2);
+      g.fillStyle(0x000000, 0.12);
       g.fillRect(x0 + 2, y0 + 2, bw - 4, bh - 4);
 
       g.fillStyle(theme.menu.gold, 0.88);

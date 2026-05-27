@@ -1,0 +1,10 @@
+{
+  "canvas": 512,
+  "view": "side",
+  "style": "hammer-flat",
+  "rules": "neutral-ww2-no-forbidden-symbols",
+  "unit": "tank",
+  "frames": 5,
+  "fps": 8,
+  "output": "runtime/trailer-units/tank/frame-{n}.svg"
+}

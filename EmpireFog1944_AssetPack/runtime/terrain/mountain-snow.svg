@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs>
+
+  <filter id="grain" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="5" seed="4" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0.4 0 0 0 0  0 0.38 0 0 0  0 0 0.35 0 0  0 0 0 0.55 0"/>
+    <feBlend in="SourceGraphic" in2="n" mode="multiply"/>
+  </filter>
+  <filter id="macro" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed="11" result="m"/>
+    <feColorMatrix in="m" type="saturate" values="0.15"/>
+    <feBlend in="SourceGraphic" in2="m" mode="overlay" opacity="0.35"/>
+  </filter>
+
+</defs>
+<g filter="url(#grain)">
+<g filter="url(#macro)">
+
+  <linearGradient id="mts" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#6a7078"/>
+    <stop offset="100%" stop-color="#3a4048"/>
+  </linearGradient>
+  <rect width="256" height="256" fill="url(#mts)"/>
+  <polygon points="128,28 38,232 218,232" fill="#4a5058"/>
+  <polygon points="128,48 55,168 201,168" fill="#d8dce4"/>
+  <polygon points="128,62 82,138 174,138" fill="#f0f4f8"/>
+  <polygon points="168,118 142,218 198,218" fill="#5a6068" opacity="0.85"/>
+
+</g>
+</g>
+</svg>

@@ -7,8 +7,11 @@ import { theme } from './theme';
 /** Larger “continent” grid; pan/zoom in the strategy scene. */
 export const MAP_WIDTH = 96;
 export const MAP_HEIGHT = 56;
-/** World pixels per map cell — sized for crisp 4K play (scene zoom scales view). */
-export const TILE_SIZE = 48;
+/** World pixels per map cell — groß für lesbare Städte/Einheiten (Zoom in StrategyScene). */
+export const TILE_SIZE = 72;
+
+/** Stadt-Symbole etwas größer als das Kachel-Raster. */
+export const CITY_MARKER_SCALE = 1.35;
 
 // ---------------------------------------------------------------------------
 // Game pacing
@@ -26,6 +29,7 @@ export const LAND_MOVEMENT_COST: Record<TerrainType, number> = {
   water: Infinity,
   plain: 1,
   forest: 2,
+  hills: 2,
   mountain: 3,
   desert: 2,
   marsh: 3,
@@ -40,6 +44,7 @@ export const SEA_MOVEMENT_COST: Record<TerrainType, number> = {
   water: 1,
   plain: Infinity,
   forest: Infinity,
+  hills: Infinity,
   mountain: Infinity,
   desert: Infinity,
   marsh: Infinity,
@@ -54,6 +59,7 @@ export const AIR_MOVEMENT_COST: Record<TerrainType, number> = {
   water: 1,
   plain: 1,
   forest: 1,
+  hills: 1,
   mountain: 1,
   desert: 1,
   marsh: 1,
@@ -68,6 +74,7 @@ export const TERRAIN_DEFENSE_BONUS: Record<TerrainType, number> = {
   water: 0,
   plain: 0,
   forest: 1,
+  hills: 1,
   mountain: 2,
   desert: 0,
   marsh: 1,

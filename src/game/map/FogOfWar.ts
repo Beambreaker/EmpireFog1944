@@ -85,4 +85,39 @@ export class FogOfWar {
     const arr = this.states.get(faction)!;
     for (let i = 0; i < arr.length; i++) arr[i] = 'visible';
   }
+
+  /**
+   * Spielstart: großer erkundeter Korridor um eigene Städte, damit die Karte nicht
+   * wie zwei schwarze Löcher wirkt.
+   */
+  bootstrapStartingVision(faction: Faction, cities: City[], visibleRadius: number, exploredRadius: number): void {
+    const arr = this.states.get(faction)!;
+    const friendly = cities.filter((c) => c.faction === faction);
+    const seeds: { x: number; y: number }[] = [];
+    for (const c of friendly) {
+      for (const t of cityFootprint(c)) {
+        seeds.push(t);
+      }
+    }
+    if (seeds.length === 0) return;
+
+    const vr = Math.max(1, Math.floor(visibleRadius));
+    const er = Math.max(vr, Math.floor(exploredRadius));
+
+    for (const { x: sx, y: sy } of seeds) {
+      for (let y = sy - er; y <= sy + er; y++) {
+        for (let x = sx - er; x <= sx + er; x++) {
+          if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+          const d = chebyshevDistance({ x: sx, y: sy }, { x, y });
+          if (d > er) continue;
+          const idx = y * this.width + x;
+          if (d <= vr) {
+            arr[idx] = 'visible';
+          } else if (arr[idx] === 'unknown') {
+            arr[idx] = 'explored';
+          }
+        }
+      }
+    }
+  }
 }

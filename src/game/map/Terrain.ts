@@ -15,6 +15,7 @@ const ALL_TERRAIN: TerrainType[] = [
   'water',
   'plain',
   'forest',
+  'hills',
   'mountain',
   'desert',
   'marsh',

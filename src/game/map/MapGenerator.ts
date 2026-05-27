@@ -3,6 +3,7 @@ import { MAP_HEIGHT, MAP_WIDTH, STARTING_CITIES_PER_FACTION } from '../core/cons
 import { TileMap } from './TileMap';
 import { SeededRandom } from '../utils/SeededRandom';
 import { cityFootprint } from '../cities/cityGeometry';
+import { continentLandness, fbm, hashNoise } from './mapNoise';
 
 const CITY_NAMES = [
   'Aachen', 'Bordeaux', 'Calais', 'Dover', 'Edinburgh', 'Florenz',
@@ -73,6 +74,66 @@ function footprintTouchesWater(tileMap: TileMap, c: City): boolean {
   return false;
 }
 
+function canCarveRoad(tileMap: TileMap, x: number, y: number): boolean {
+  if (!tileMap.inBounds(x, y)) return false;
+  const t = tileMap.get(x, y)!.terrain;
+  if (tileMap.get(x, y)!.cityId) return false;
+  return t === 'plain' || t === 'forest' || t === 'hills' || t === 'desert' || t === 'marsh';
+}
+
+function carveRoadLine(tileMap: TileMap, x0: number, y0: number, x1: number, y1: number): void {
+  let x = x0;
+  let y = y0;
+  let guard = 0;
+  while ((x !== x1 || y !== y1) && guard++ < 800) {
+    if (canCarveRoad(tileMap, x, y)) tileMap.setTerrain(x, y, 'road');
+    if (Math.abs(x1 - x) >= Math.abs(y1 - y)) {
+      x += x1 > x ? 1 : -1;
+    } else {
+      y += y1 > y ? 1 : -1;
+    }
+  }
+  if (canCarveRoad(tileMap, x1, y1)) tileMap.setTerrain(x1, y1, 'road');
+}
+
+function cityCenter(c: City): { x: number; y: number } {
+  return {
+    x: Math.floor(c.x + c.tileWidth * 0.5),
+    y: Math.floor(c.y + c.tileHeight * 0.5),
+  };
+}
+
+function connectRoadNetwork(tileMap: TileMap, cities: City[]): void {
+  if (cities.length < 2) return;
+  const hubs = cities.filter((c) => c.settlementKind === 'capital' || c.settlementKind === 'town');
+  const nodes = hubs.length >= 2 ? hubs : cities.slice(0, Math.min(8, cities.length));
+  const sorted = [...nodes].sort((a, b) => a.x - b.x);
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = cityCenter(sorted[i]);
+    const b = cityCenter(sorted[i + 1]);
+    carveRoadLine(tileMap, a.x, a.y, b.x, b.y);
+  }
+  for (const c of cities) {
+    if (c.settlementKind === 'village') continue;
+    let best: City | null = null;
+    let bestD = Infinity;
+    const cc = cityCenter(c);
+    for (const h of nodes) {
+      if (h.id === c.id) continue;
+      const hc = cityCenter(h);
+      const d = Math.abs(cc.x - hc.x) + Math.abs(cc.y - hc.y);
+      if (d < bestD) {
+        bestD = d;
+        best = h;
+      }
+    }
+    if (best) {
+      const hc = cityCenter(best);
+      carveRoadLine(tileMap, cc.x, cc.y, hc.x, hc.y);
+    }
+  }
+}
+
 /**
  * One large “continent” (ellipse), detail terrain, multi-tile settlements.
  */
@@ -84,23 +145,17 @@ export function generateMap(
   const rng = new SeededRandom(seed);
   const tileMap = new TileMap(width, height);
 
-  const cx = width * 0.5;
-  const cy = height * 0.48;
-  const rx = width * 0.44;
-  const ry = height * 0.44;
-
+  const landThreshold = 0.58;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const dx = (x - cx) / rx;
-      const dy = (y - cy) / ry;
-      if (dx * dx + dy * dy < 1) {
+      if (continentLandness(x, y, width, height, seed) >= landThreshold) {
         tileMap.setTerrain(x, y, 'plain');
       }
     }
   }
 
-  // Coast noise — bite a few bays into the silhouette.
-  for (let pass = 0; pass < 2; pass++) {
+  // Coast noise — Buchten und Halbinseln.
+  for (let pass = 0; pass < 3; pass++) {
     const snapshot: TerrainType[] = [];
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -126,19 +181,17 @@ export function generateMap(
     }
   }
 
-  const elevation = (x: number, y: number, salt: number): number => {
-    const v =
-      Math.sin((x * 12.9898 + y * 78.233 + salt + seed) * 0.0001 + (x + y)) * 43758.5453;
-    return v - Math.floor(v);
-  };
+  const elevation = (x: number, y: number, salt: number): number =>
+    fbm(x * 0.08 + salt, y * 0.08, seed + salt) * 0.65 + hashNoise(x, y, seed + salt) * 0.35;
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const tile = tileMap.get(x, y)!;
       if (tile.terrain !== 'plain') continue;
-      const e = elevation(x, y, 7) * 0.55 + rng.next() * 0.45;
-      if (e > 0.86) tileMap.setTerrain(x, y, 'mountain');
-      else if (e > 0.62) tileMap.setTerrain(x, y, 'forest');
+      const e = elevation(x, y, 7);
+      if (e > 0.88) tileMap.setTerrain(x, y, 'mountain');
+      else if (e > 0.8) tileMap.setTerrain(x, y, 'hills');
+      else if (e > 0.58) tileMap.setTerrain(x, y, 'forest');
     }
   }
 
@@ -149,6 +202,26 @@ export function generateMap(
       if (t !== 'plain') continue;
       if (!hasWaterNeighbour(tileMap, x, y)) continue;
       if (rng.next() < 0.42) tileMap.setTerrain(x, y, 'marsh');
+    }
+  }
+
+  // Kleine Binnenseen (bräunlich dargestellt, nicht Ozean).
+  for (let n = 0; n < 14; n++) {
+    const lx = rng.range(12, width - 13);
+    const ly = rng.range(12, height - 13);
+    if (tileMap.get(lx, ly)?.terrain !== 'plain') continue;
+    let ok = true;
+    for (let dy = -1; dy <= 1 && ok; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const t = tileMap.get(lx + dx, ly + dy)?.terrain;
+        if (t !== 'plain' && t !== 'forest') ok = false;
+      }
+    }
+    if (!ok) continue;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        tileMap.setTerrain(lx + dx, ly + dy, 'water');
+      }
     }
   }
 
@@ -310,16 +383,7 @@ export function generateMap(
   for (const c of westPick) c.faction = westFaction;
   for (const c of eastPick) c.faction = eastFaction;
 
-  // Sparse roads on open plains (visual + movement shortcut).
-  for (let y = 2; y < height - 2; y++) {
-    for (let x = 2; x < width - 2; x++) {
-      const t = tileMap.get(x, y)!.terrain;
-      if (t !== 'plain') continue;
-      if (tileMap.get(x, y)!.cityId) continue;
-      if (rng.next() > 0.016) continue;
-      tileMap.setTerrain(x, y, 'road');
-    }
-  }
+  connectRoadNetwork(tileMap, cities);
 
   for (const f of ['allies', 'axis'] as Faction[]) {
     const owned = cities.filter((c) => c.faction === f);

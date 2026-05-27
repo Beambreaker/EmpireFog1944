@@ -1,11 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <defs><linearGradient id="tg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7a7568"/><stop offset="100%" stop-color="#5a5548"/></linearGradient><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="t"/>
-  <feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" in2="t" mode="multiply" opacity="0.08"/></filter></defs>
-  <rect width="256" height="256" fill="url(#tg)"/>
-  <rect fill="#6a6558" width="256" height="256"/>
-     <rect x="32" y="108" width="192" height="40" fill="#8a8478" rx="4"/>
-     <rect x="108" y="32" width="40" height="192" fill="#8a8478" rx="4"/>
-     <line x1="48" y1="128" x2="208" y2="128" stroke="#c9a44a" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="12 8"/>
-     <line x1="128" y1="48" x2="128" y2="208" stroke="#c9a44a" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="12 8"/>
-  <rect width="256" height="256" fill="" opacity="0.35" style="mix-blend-mode:overlay"/>
-  </svg>
+<defs>
+
+  <filter id="grain" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="5" seed="4" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0.4 0 0 0 0  0 0.38 0 0 0  0 0 0.35 0 0  0 0 0 0.55 0"/>
+    <feBlend in="SourceGraphic" in2="n" mode="multiply"/>
+  </filter>
+  <filter id="macro" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed="11" result="m"/>
+    <feColorMatrix in="m" type="saturate" values="0.15"/>
+    <feBlend in="SourceGraphic" in2="m" mode="overlay" opacity="0.35"/>
+  </filter>
+
+</defs>
+<g filter="url(#grain)">
+<g filter="url(#macro)">
+
+  <linearGradient id="rd" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#5a5848"/>
+    <stop offset="100%" stop-color="#4a483c"/>
+  </linearGradient>
+  <rect width="256" height="256" fill="url(#rd)"/>
+  <rect x="0" y="108" width="256" height="40" fill="#6a6658" opacity="0.85"/>
+  <rect x="0" y="118" width="256" height="20" fill="#7a7668" opacity="0.5"/>
+  <line x1="8" y1="128" x2="248" y2="128" stroke="#9a9488" stroke-width="1" opacity="0.35" stroke-dasharray="12 8"/>
+
+</g>
+</g>
+</svg>

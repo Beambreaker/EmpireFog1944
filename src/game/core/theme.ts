@@ -21,14 +21,14 @@ export const theme = {
 
   /** Fog overlay drawn on top of terrain (alpha). */
   fog: {
-    unknown: { color: 0x020408, alpha: 0.94 },
-    explored: { color: 0x05080c, alpha: 0.52 },
+    unknown: { color: 0x0a1018, alpha: 0.78 },
+    explored: { color: 0x121820, alpha: 0.42 },
   },
 
   /** Map grid / highlights (Phaser hex). */
   map: {
     gridLine: 0x0a0f18,
-    gridAlpha: 0.35,
+    gridAlpha: 0.14,
     moveHighlight: 0xc9a44a,
     moveHighlightFillAlpha: 0.16,
     attackRange: 0xd96565,
@@ -52,9 +52,10 @@ export const theme = {
     water: 0x0e2842,
     waterShallow: 0x1e6a72,
     sand: 0xd4c4a0,
-    plain: 0x5a7444,
-    forest: 0x324a2c,
-    mountain: 0x6a6458,
+    plain: 0x5a6a48,
+    forest: 0x2e3c28,
+    hills: 0x4a5a40,
+    mountain: 0x5a5850,
     desert: 0xd0b080,
     marsh: 0x3c4a42,
     road: 0x7a7568,
@@ -75,6 +76,7 @@ export const theme = {
     water: 'Wasser',
     plain: 'Ebene',
     forest: 'Wald',
+    hills: 'Hügel',
     mountain: 'Gebirge',
     desert: 'Wüste',
     marsh: 'Sumpf',
@@ -116,6 +118,8 @@ export function terrainStyleFromTheme(t: TerrainType): { base: number; accent: n
       return { base: theme.terrainBase.plain, accent: 0x5a7440, label };
     case 'forest':
       return { base: theme.terrainBase.forest, accent: 0x3d5530, label };
+    case 'hills':
+      return { base: theme.terrainBase.hills, accent: 0x5a6a48, label };
     case 'mountain':
       return { base: theme.terrainBase.mountain, accent: 0x8a8278, label };
     case 'desert':

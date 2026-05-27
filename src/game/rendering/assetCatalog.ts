@@ -25,11 +25,15 @@ export const TEXTURE = {
 const terrainKeys: Record<string, string> = {
   water: 'terrain-water',
   'water-shallow': 'terrain-water-shallow',
+  lake: 'terrain-lake',
+  ice: 'terrain-ice',
   coast: 'terrain-coast',
   plain: 'terrain-plain',
   forest: 'terrain-forest',
   mountain: 'terrain-mountain',
+  'mountain-snow': 'terrain-mountain-snow',
   desert: 'terrain-desert',
+  snow: 'terrain-snow',
   marsh: 'terrain-marsh',
   road: 'terrain-road',
   hills: 'terrain-hills',
@@ -71,6 +75,74 @@ export function cityTextureKey(name: keyof typeof cityKeys): string {
 export function unitTextureKey(typeId: UnitTypeId): string {
   return unitKeys[typeId];
 }
+
+/** Kino-Intro-Einheiten (512×512, animierte Frames unter runtime/trailer-units/). */
+export const TRAILER_UNITS = {
+  tank: 'tank',
+  infantry: 'infantry',
+  artillery: 'artillery',
+  destroyer: 'destroyer',
+  battleship: 'battleship',
+  submarine: 'submarine',
+  fighter: 'fighter',
+  bomber: 'bomber',
+} as const;
+
+export type TrailerUnitId = keyof typeof TRAILER_UNITS;
+
+/** Frame-Anzahl pro Trailer-Einheit (Ordner frame-0.svg …). */
+export const TRAILER_FRAME_COUNTS: Record<TrailerUnitId, number> = {
+  tank: 5,
+  infantry: 4,
+  artillery: 5,
+  destroyer: 4,
+  battleship: 4,
+  submarine: 4,
+  fighter: 4,
+  bomber: 4,
+};
+
+export function trailerAnimKey(unit: TrailerUnitId, frame: number): string {
+  return `trailer-${unit}-${frame}`;
+}
+
+export function trailerAnimPlayKey(unit: TrailerUnitId): string {
+  return `trailer-anim-${unit}`;
+}
+
+/** Alle Trailer-SVG-Frames für Preload (Boot + Intro ohne Boot). */
+export const TRAILER_SVG_LOAD_LIST: ReadonlyArray<{
+  key: string;
+  path: string;
+  w: number;
+  h: number;
+}> = (Object.keys(TRAILER_UNITS) as TrailerUnitId[]).flatMap((unit) => {
+  const count = TRAILER_FRAME_COUNTS[unit];
+  return Array.from({ length: count }, (_, frame) => ({
+    key: trailerAnimKey(unit, frame),
+    path: `${ASSET_PACK}/trailer-units/${unit}/frame-${frame}.svg`,
+    w: 512,
+    h: 512,
+  }));
+});
+
+/** Minimale Intro-SVGs für Nachladen (Menü → Intro). */
+export const INTRO_MINIMAL_SVG_ENTRIES: ReadonlyArray<{
+  key: string;
+  path: string;
+  w: number;
+  h: number;
+}> = [
+  { key: TEXTURE.grain, path: 'assets/generated/map-grain.svg', w: 128, h: 128 },
+  ...TRAILER_SVG_LOAD_LIST,
+];
+
+/** Texture-Keys für Intro-Nachlade-Check. */
+export const INTRO_MINIMAL_LOAD_KEYS: readonly string[] = [
+  TEXTURE.grain,
+  terrainKeys.water,
+  ...TRAILER_SVG_LOAD_LIST.map((e) => e.key),
+];
 
 export function settlementTextureKey(kind: SettlementKind): string {
   switch (kind) {
@@ -127,6 +199,12 @@ export const SVG_LOAD_LIST: ReadonlyArray<{
     w: 256,
     h: 256,
   })),
+  ...Array.from({ length: 16 }, (_, m) => ({
+    key: `terrain-blend-mask-${m}`,
+    path: `${ASSET_PACK}/terrain-blend/mask-${m}.svg`,
+    w: 256,
+    h: 256,
+  })),
   ...Object.entries(cityKeys).map(([name, key]) => {
     const file =
       name === 'fortified' ? 'fortified-outpost' : name === 'radar' ? 'radar-station' : name;
@@ -151,4 +229,5 @@ export const SVG_LOAD_LIST: ReadonlyArray<{
   { key: 'unit-submarine', path: `${ASSET_PACK}/units/submarines/submarine.svg`, w: 96, h: 96 },
   { key: 'unit-carrier', path: `${ASSET_PACK}/units/ships/carrier.svg`, w: 96, h: 96 },
   { key: 'unit-battleship', path: `${ASSET_PACK}/units/ships/battleship.svg`, w: 96, h: 96 },
+  ...TRAILER_SVG_LOAD_LIST,
 ];

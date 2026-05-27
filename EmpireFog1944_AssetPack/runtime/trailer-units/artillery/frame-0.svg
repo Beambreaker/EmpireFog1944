@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+  <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#5a5854"/>
+    <stop offset="100%" stop-color="#2e2c28"/>
+  </linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#7a7874"/>
+    <stop offset="100%" stop-color="#3a3834"/>
+  </linearGradient>
+  <linearGradient id="track" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#4a4844"/>
+    <stop offset="100%" stop-color="#1a1816"/>
+  </linearGradient>
+</defs>
+<rect width="512" height="512" fill="none"/>
+
+<g transform="translate(40, 60)">
+  <circle cx="120" cy="300" r="52" fill="#3a3834" stroke="#2a2826" stroke-width="6"/>
+  <circle cx="300" cy="300" r="52" fill="#3a3834" stroke="#2a2826" stroke-width="6"/>
+  <path d="M100 260 L320 260 L300 220 L120 220 Z" fill="url(#metal)"/>
+  <rect x="200" y="180" width="200" height="16" rx="6" fill="#4a4844" transform="rotate(-8 200 188)"/>
+  
+</g>
+</svg>

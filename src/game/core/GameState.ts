@@ -60,8 +60,9 @@ export class GameState {
       this.units.push(createUnit('infantry', c.faction, spawn.x, spawn.y));
     }
 
-    // Initial fog computation.
+    // Initial fog computation + lesbarer Start (nicht nur 2 Nebel-Flecken).
     this.fog.recompute(this.playerFaction, this.units, this.cities, this.tileMap);
+    this.fog.bootstrapStartingVision(this.playerFaction, this.cities, 5, 14);
     this.fog.recompute(this.aiFaction, this.units, this.cities, this.tileMap);
 
     for (const line of openingLogLines(FACTION_NAME[playerFaction])) {

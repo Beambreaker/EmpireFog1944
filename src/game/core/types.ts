@@ -9,6 +9,7 @@ export type TerrainType =
   | 'water'
   | 'plain'
   | 'forest'
+  | 'hills'
   | 'mountain'
   | 'desert'
   | 'marsh'

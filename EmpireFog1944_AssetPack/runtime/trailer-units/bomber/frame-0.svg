@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+  <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#5a5854"/>
+    <stop offset="100%" stop-color="#2e2c28"/>
+  </linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#7a7874"/>
+    <stop offset="100%" stop-color="#3a3834"/>
+  </linearGradient>
+  <linearGradient id="track" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#4a4844"/>
+    <stop offset="100%" stop-color="#1a1816"/>
+  </linearGradient>
+</defs>
+<rect width="512" height="512" fill="none"/>
+
+<g transform="translate(30, 120)">
+  <path d="M60 100 L400 90 L420 120 L360 130 L200 145 L70 170 Z" fill="url(#hull)"/>
+  <path d="M160 145 L100 50 L200 135 Z" fill="#5a5854"/>
+  <path d="M200 145 L300 210 L240 150 Z" fill="#4a4844"/>
+  <path d="M200 145 L300 80 L240 145 Z" fill="#4a4844"/>
+  <g transform="translate(88, 248) rotate(0)"><ellipse cx="0" cy="0" rx="6" ry="28" fill="#8a8880" opacity="0.75"/><ellipse cx="0" cy="0" rx="28" ry="6" fill="#8a8880" opacity="0.75"/></g>
+</g>
+</svg>

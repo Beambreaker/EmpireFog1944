@@ -2,30 +2,25 @@ import { MAP_HEIGHT, MAP_WIDTH, TILE_SIZE } from './constants';
 
 /** Pan/zoom tuning — initial scale derived from viewport (4K-first readability). */
 export const CAMERA = {
-  minScale: 0.42,
-  maxScale: 2.8,
-  zoomStep: 0.1,
-  /** Target on-screen tile size in px at game start. */
-  targetTileScreenPx: 50,
-  sidePanelReservePx: 480,
-  hudReservePx: 300,
+  minScale: 0.5,
+  maxScale: 3.6,
+  /** Multiplikator pro Mausrad-Tick (zoom am Zeiger). */
+  zoomWheelFactor: 1.14,
+  /** Target on-screen tile size in px at game start (lesbar, nicht ganze Karte). */
+  targetTileScreenPx: 92,
+  sidePanelReservePx: 460,
+  hudReservePx: 280,
 } as const;
 
 function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
-/** World scale so tiles stay readable on 4K without forcing full-map overview. */
-export function computeInitialWorldScale(viewportWidth: number, viewportHeight: number): number {
-  const worldW = MAP_WIDTH * TILE_SIZE;
-  const worldH = MAP_HEIGHT * TILE_SIZE;
-  const availW = Math.max(720, viewportWidth - CAMERA.sidePanelReservePx);
-  const availH = Math.max(540, viewportHeight - CAMERA.hudReservePx);
-
-  const fitScale = Math.min(availW / worldW, availH / worldH);
+/**
+ * Start-Zoom: Kacheln lesbar groß — nicht die gesamte 96×56-Karte auf einmal.
+ * (Früher wurde auf fitScale gedeckelt → ~0,2 Zoom → Nebel-Flecken statt Karte.)
+ */
+export function computeInitialWorldScale(_viewportWidth: number, _viewportHeight: number): number {
   const readabilityScale = CAMERA.targetTileScreenPx / TILE_SIZE;
-  const desired = Math.max(readabilityScale, fitScale * 0.78);
-  const maxForViewport = fitScale * 1.12;
-
-  return clamp(desired, CAMERA.minScale, Math.min(CAMERA.maxScale, maxForViewport));
+  return clamp(readabilityScale, CAMERA.minScale, CAMERA.maxScale);
 }
